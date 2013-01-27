@@ -247,7 +247,7 @@ private
   
   def chr_known(chr)
     #
-    # check for correct entry of :chr
+    # check for correct entry of chr
     #
     if !@data.has_key?(chr)
       if @data.has_key?("chr#{chr}")
@@ -260,34 +260,3 @@ private
   end
 
 end
-
-
-
-f = "/media/bigdisk2/sequencing/wig/jonas/temp.txt"
-
-a = WigReader.new(f)
-a.read
-puts "fpkm:"
-puts a.fpkm(:chr => 1, :start => 5760201, :end => 5760422)
-puts "profile:"
-puts a.profile(:chr => 1, :start => 5760210, :end => 5760420)
-
-
-=begin
-t = Time.now
-a = WigReader.new(f)
-a.read_with_progress()
-puts Time.now-t
-
-t = Time.now
-a = WigReader.new(f)
-a.read()
-puts Time.now-t
-
-
-
-puts "Position 5760401"
-puts a.data["chr1"][:positions][5760401]
-puts "fpkm"
-puts a.fpkm(:chr => 1, :start => 5760410, :end => 5760420)
-=end
