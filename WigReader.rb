@@ -25,9 +25,16 @@ wig.read_with_progress(kind)
 # kind = "number"|"percent"|"percentage" ==> print the percentage of data parsed to STDOUT
 ==> Note that read_with_progress is WAY slower than read
 
+
+# to return bins etc, please note:
+# The start coordinate will be INcluded, 
+# the end coordinate will be EXcluded
+# 1-10 means [1,2,3,4,5,6,7,8,9]
+
+
 # return fpkm value of a specified region
 wig.fpkm(:chr => "chr1", :start => 10034, :end => 123534) # => 2034.245
-==> fpkm takes into account if given coordinates are only part of a data window (including both given coordinates!)
+==> fpkm takes into account if given coordinates are only part of a data window (excluding the end coordinate!)
   eg: WIG FILE
   variable...chr1...
   10001 100.0
@@ -39,7 +46,9 @@ wig.fpkm(:chr => "chr1", :start => 10034, :end => 123534) # => 2034.245
 
 # return profile of given coordinates
 wig.profile(:chr => "chr1", :start => 10034 :end => 123534) # => [50.0, 100.0, ... , 100.0]
-==> takes only whole windows, surrounding the given coordinates
+==> takes only whole windows, excluding the end coordinate.
+wig.profile(:chr => "chr1", :start => 10034 :end => 123551) # => [50.0, 100.0, ... , 100.0]
+
 
 
 =end
@@ -50,13 +59,15 @@ class WigReader
     raise ArgumentError, "File #{filename} doesn't exist" unless File.exists?(filename)
     @file = File.open(filename)
     @curr_chr = ""
-    @curr_bp = 1
+    @curr_bp = nil
     @data = {}
     # data = {
     #         "chr1" => {
-    #                  :step => 25, :positions => {
-    #                                             10001 => 12, 10026 => 28...
-    #                                             }
+    #                  :step => 25, 
+    #                  :begin => 10001, 
+    #                  :positions => {
+    #                                10001 => 12, 10026 => 28...
+    #                                 }
     #                  }
     #         }
     # {"chr1"=>{:step=>25, :positions=>{10001=>16, 10026=>10, 10051=>0}}, "chr2"=>{:step=>25, :positions=>{10001=>8, 10026=>6, 10051=>19}}}
@@ -69,6 +80,7 @@ class WigReader
   def read()
     while (add)
     end
+    return self
   end
 
   def read_with_progress(kind="chr")
@@ -111,7 +123,7 @@ class WigReader
       else
         @cur_chr = chr
         @data[@cur_chr] = {:step => @step, :positions => {}}
-        @curr_bp = 1
+        @curr_bp = nil
         @skip_until_header = false
       return chr
       end
@@ -129,15 +141,28 @@ class WigReader
     raise ArgumentError, "Wrong data format in line #{$.} \"#{line}\"" unless line =~ /^\d+\s\d*\.?\d+$/
 
     # actually reading the values and adding them to cur_chr now!
-    @curr_bp = @curr_bp + @step
+
     pos,value = line.split(" ")
     pos = pos.to_i
+
+    # values for chromosomes don't start at 1, but WAY later. Don't fill the array with 0s
+    if @curr_bp.nil? 
+      @curr_bp = pos
+      @data[@cur_chr][:begin] = pos
+    else
+      @curr_bp += @step
+    end
+
+    # Wig files don't have to list 0 values, so lines might be missing. We will fill them with 0  
     while (pos > @curr_bp)
-      # Wig files don't have to list 0 values, so lines might be missing. We will give fill them with 0
       @data[@cur_chr][:positions][@curr_bp] = 0.0
       @curr_bp = @curr_bp + @step
     end
+
+
+    #
     # finally adding the value to the Hash
+    #
     @data[@cur_chr][:positions][pos] = value.to_f
     return line
 
@@ -160,16 +185,22 @@ class WigReader
     #
     # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
     #
-    correct_start = shift_start(chr,pos_start)
+    # DEBUG
+    #correct_start = shift_start(chr,pos_start)
+    correct_start = align_coordinates_with_bins(chr,pos_start)
+
     # calculate fraction of first window to use
     first_fraction = ((correct_start + step) - pos_start) / step.to_f
 
     #
     # shifting the reading window upstream until we find the end coordinate that matches our wig file frame
     #
-    correct_end = shift_end(chr,pos_end)
+    # DEBUG
+    #correct_end = shift_end(chr,pos_end)
+    correct_end = align_coordinates_with_bins(chr,pos_end)
+
     # calculate fraction of last window to use
-    last_fraction = ((pos_end+1) - correct_end) / step.to_f
+    last_fraction = ((pos_end) - correct_end) / step.to_f
 
     #
     # if only a fraction of one window will be used
@@ -197,12 +228,13 @@ class WigReader
   def profile(args)
     #
     #
-    # returns an array containing the fpkm values of each windows within the specified coordingates (surrounding the coordinates)
-    # wig.profile(:chr => "chr1", :start => 1, :end => 100) # => [0, 10, 3, 24]
+    # returns an array containing the fpkm values of each windows within the specified coordinates
+    # wig.profile(:chr => "chr1", :start => 1, :end => 100) # => [0, 10, 3]
     #
     chr = chr_known(args[:chr])
-    pos_start = shift_start(chr,args[:start].to_i)  # shift the start coordinate upstream until it matches a wig file data point
-    pos_end = shift_end(chr,args[:end].to_i)  # shift the end coordinate upstream until it matches a wig file data point
+    pos_start = align_coordinates_with_bins(chr,args[:start].to_i)  # shift the start coordinate upstream until it matches a wig file data point
+    pos_end = align_coordinates_with_bins(chr,args[:end].to_i-1)  # shift the end coordinate upstream until it matches a wig file data point
+    # Subtrating 1 from end coordinate to exclude the last give nucleotide
 
     # check for correct entry of start and end variables
     unless (pos_end > pos_start)
@@ -222,6 +254,18 @@ class WigReader
 
 
 private
+  def align_coordinates_with_bins(chr,pos)
+    #
+    # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
+    #
+    until @data[chr][:positions].has_key?(pos)
+      pos -= 1
+      raise RuntimeError, "Coordinate is too small to align it with bins." if (pos < @data[chr][:begin])
+    end
+    return pos
+  end
+
+=begin
   def shift_start(chr,correct_start)
     #
     # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
@@ -243,7 +287,7 @@ private
     end
     return correct_end
   end
-
+=end
   
   def chr_known(chr)
     #
