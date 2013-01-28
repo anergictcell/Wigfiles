@@ -26,7 +26,7 @@ wig.read_with_progress(kind)
 ==> Note that read_with_progress is WAY slower than read
 
 
-# to return bins etc, please note:
+# to retrieve bins etc, please note:
 # The start coordinate will be INcluded, 
 # the end coordinate will be EXcluded
 # 1-10 means [1,2,3,4,5,6,7,8,9]
@@ -140,11 +140,11 @@ class WigReader
     # check if the data line has correct format
     raise ArgumentError, "Wrong data format in line #{$.} \"#{line}\"" unless line =~ /^\d+\s\d*\.?\d+$/
 
+    #
     # actually reading the values and adding them to cur_chr now!
-
+    #
     pos,value = line.split(" ")
     pos = pos.to_i
-
     # values for chromosomes don't start at 1, but WAY later. Don't fill the array with 0s
     if @curr_bp.nil? 
       @curr_bp = pos
@@ -185,20 +185,14 @@ class WigReader
     #
     # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
     #
-    # DEBUG
-    #correct_start = shift_start(chr,pos_start)
     correct_start = align_coordinates_with_bins(chr,pos_start)
-
     # calculate fraction of first window to use
     first_fraction = ((correct_start + step) - pos_start) / step.to_f
 
     #
     # shifting the reading window upstream until we find the end coordinate that matches our wig file frame
     #
-    # DEBUG
-    #correct_end = shift_end(chr,pos_end)
     correct_end = align_coordinates_with_bins(chr,pos_end)
-
     # calculate fraction of last window to use
     last_fraction = ((pos_end) - correct_end) / step.to_f
 
@@ -234,7 +228,7 @@ class WigReader
     chr = chr_known(args[:chr])
     pos_start = align_coordinates_with_bins(chr,args[:start].to_i)  # shift the start coordinate upstream until it matches a wig file data point
     pos_end = align_coordinates_with_bins(chr,args[:ending].to_i-1)  # shift the end coordinate upstream until it matches a wig file data point
-    # Subtrating 1 from end coordinate to exclude the last give nucleotide
+    # Subtracting 1 from end coordinate to exclude the last given nucleotide
 
     # check for correct entry of start and end variables
     unless (pos_end > pos_start)
@@ -264,30 +258,6 @@ private
     end
     return pos
   end
-
-=begin
-  def shift_start(chr,correct_start)
-    #
-    # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
-    #
-    until @data[chr][:positions].has_key?(correct_start)
-      correct_start -= 1
-      raise RuntimeError, "Start coordinate is less than 1" if correct_start < 1
-    end
-    return correct_start
-  end
-
-  def shift_end(chr,correct_end)
-    #
-    # shifting the reading window upstream until we find the end coordinate that matches our wig file frame
-    #
-    until @data[chr][:positions].has_key?(correct_end)
-      correct_end -= 1
-      raise RuntimeError, "End coordinate is less than 1" if correct_end < 1
-    end
-    return correct_end
-  end
-=end
   
   def chr_known(chr)
     #
