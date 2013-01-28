@@ -13,3 +13,10 @@ script to convert raw values in .wig files to fpkm values. This script only work
 
 - subtract_wigs.rb:  
 script to subtract values from one .wig file from values of another. Good to remove background noise
+
+- test.rb:  
+Unit testing for WigReader.rb  
+
+- test.wig:  
+Test wig file  
+
