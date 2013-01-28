@@ -33,7 +33,7 @@ wig.read_with_progress(kind)
 
 
 # return fpkm value of a specified region
-wig.fpkm(:chr => "chr1", :start => 10034, :end => 123534) # => 2034.245
+wig.fpkm(:chr => "chr1", :start => 10034, :ending => 123534) # => 2034.245
 ==> fpkm takes into account if given coordinates are only part of a data window (excluding the end coordinate!)
   eg: WIG FILE
   variable...chr1...
@@ -45,9 +45,9 @@ wig.fpkm(:chr => "chr1", :start => 10034, :end => 123534) # => 2034.245
   123551 50.0
 
 # return profile of given coordinates
-wig.profile(:chr => "chr1", :start => 10034 :end => 123534) # => [50.0, 100.0, ... , 100.0]
+wig.profile(:chr => "chr1", :start => 10034 :ending => 123534) # => [50.0, 100.0, ... , 100.0]
 ==> takes only whole windows, excluding the end coordinate.
-wig.profile(:chr => "chr1", :start => 10034 :end => 123551) # => [50.0, 100.0, ... , 100.0]
+wig.profile(:chr => "chr1", :start => 10034 :ending => 123551) # => [50.0, 100.0, ... , 100.0]
 
 
 
@@ -171,13 +171,13 @@ class WigReader
   def fpkm(args)
     chr = chr_known(args[:chr])
     pos_start = args[:start].to_i
-    pos_end = args[:end].to_i
+    pos_end = args[:ending].to_i
 
     #
     # check for correct entry of start and end variables
     #
     unless (pos_start.is_a? Integer) && (pos_end.is_a? Integer) && (pos_end > pos_start)
-      raise ArgumentError, ":start and :end have to be Integers, and :end > :start. :start: #{pos_start}, :end: #{pos_end}"
+      raise ArgumentError, ":start and :ending have to be Integers, and :ending > :start. :start: #{pos_start}, :ending: #{pos_end}"
     end
 
     step = @data[chr][:step]    # we will be using this value a lot, so lets get it once from the Hash
@@ -229,16 +229,16 @@ class WigReader
     #
     #
     # returns an array containing the fpkm values of each windows within the specified coordinates
-    # wig.profile(:chr => "chr1", :start => 1, :end => 100) # => [0, 10, 3]
+    # wig.profile(:chr => "chr1", :start => 1, :ending => 100) # => [0, 10, 3]
     #
     chr = chr_known(args[:chr])
     pos_start = align_coordinates_with_bins(chr,args[:start].to_i)  # shift the start coordinate upstream until it matches a wig file data point
-    pos_end = align_coordinates_with_bins(chr,args[:end].to_i-1)  # shift the end coordinate upstream until it matches a wig file data point
+    pos_end = align_coordinates_with_bins(chr,args[:ending].to_i-1)  # shift the end coordinate upstream until it matches a wig file data point
     # Subtrating 1 from end coordinate to exclude the last give nucleotide
 
     # check for correct entry of start and end variables
     unless (pos_end > pos_start)
-      raise ArgumentError, "The end coordinate is smaller than start coordinate. :start: #{pos_start}, :end: #{pos_end}"
+      raise ArgumentError, "The end coordinate is smaller than start coordinate. :start: #{pos_start}, :ending: #{pos_end}"
     end
 
     # place fpkm values in array to return

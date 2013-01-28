@@ -13,12 +13,41 @@ class TestReading < Test::Unit::TestCase
   end
   
   def test_fpkm_values
-    assert_equal(0.38077, @wig.fpkm(:chr => 1, :start => @a, :end => @b))
-    assert_equal(0.38077, @wig.fpkm(:chr => 1, :start => @a, :end => @b))
+    res = @ary.inject{|x,y| x+y}
+    assert_equal(res, @wig.fpkm(:chr => 1, start: @a, ending: @b))
+    
+    # Using different chromosome assignment, but same chromosome
+    assert_equal(res, @wig.fpkm(:chr => "chr1", start: @a, ending: @b))
+
+    # Removing one bin at the end
+    res = @ary[0..-2].inject{|x,y| x+y}
+    assert_equal(res, @wig.fpkm(:chr => 1, start: @a, ending: @b-25))
+
+    # Clipping the last bin by 5
+    res = ((20/25.to_f) * @ary.last) + @ary[0..-2].inject{|x,y| x+y}
+    assert_equal(res, @wig.fpkm(:chr => 1, start: @a, ending: @b-5))
+
+    # Trimming the first bin by 10
+    res = ((15/25.to_f) * @ary[0]) + @ary[1..-1].inject{|x,y| x+y}
+    assert_equal(res, @wig.fpkm(:chr => 1, start: @a+10, ending: @b))
+    
   end
 
   def test_profiles
-    assert_equal(@ary, @wig.profile(:chr => 1, :start => @a, :end => @b))
-    assert_equal(@ary[0..-2], @wig.profile(:chr => 1, :start => @a, :end => @b-25))
+    assert_equal(@ary, @wig.profile(:chr => 1, start: @a, ending: @b))
+
+    # Removing last bin from profile
+    assert_equal(@ary[0..-2], @wig.profile(:chr => 1, start: @a, ending: @b-25))
   end
+
+  def test_errors
+    assert_raise(ArgumentError) {@wig.read_with_progress("string")} # Wrong Argument
+    assert_raise(ArgumentError) {@wig.fpkm(chr: 28, start: @a, ending: @b)} # Wrong chromosome name
+    assert_raise(ArgumentError) {@wig.fpkm(chr: 1, start: @b, ending: @a)}  # start > ending
+
+    assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: 100, ending: @b)}  # start < recorded data
+    assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: "string", ending: @a)}  # start not Integer => Will raise Error, because "string".to_i < recorded data
+    assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: 1.34, ending: @a)}  # Will raise Error, because 1.34.to_i < recorded data
+  end
+
 end
