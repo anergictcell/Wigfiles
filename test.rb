@@ -30,6 +30,13 @@ class TestReading < Test::Unit::TestCase
     # Trimming the first bin by 10
     res = ((15/25.to_f) * @ary[0]) + @ary[1..-1].inject{|x,y| x+y}
     assert_equal(res, @wig.fpkm(:chr => 1, start: @a+10, ending: @b))
+
+    # Pulling only one bin
+    assert_equal(@ary[0], @wig.fpkm(:chr => 1, start: @a, ending: @a+25))
+
+    # Pulling only part of one bin
+    assert_equal(@ary[0]*(10/25.to_f), @wig.fpkm(:chr => 1, start: @a+5, ending: @a+15))
+
     
   end
 
@@ -46,7 +53,7 @@ class TestReading < Test::Unit::TestCase
     assert_raise(ArgumentError) {@wig.fpkm(chr: 1, start: @b, ending: @a)}  # start > ending
 
     assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: 100, ending: @b)}  # start < recorded data
-    assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: "string", ending: @a)}  # start not Integer => Will raise Error, because "string".to_i < recorded data
+    assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: "string", ending: @b)}  # start not Integer => Will raise Error, because "string".to_i < recorded data
     assert_raise(RuntimeError) {@wig.fpkm(chr: 1, start: 1.34, ending: @a)}  # Will raise Error, because 1.34.to_i < recorded data
   end
 
