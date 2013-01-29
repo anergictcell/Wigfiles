@@ -114,22 +114,29 @@ class WigReader
 
     if line[0,1] == "v" #e.g. variableStep chrom=chr11 span=25
       _, chr, step = line.split(" ").collect{|a| a.split("=")[1]}
+
+      if step.nil?  # TODO: Enable Wigreader to determine the span by itself by reading the next two lines
+        raise ArgumentError, "No span value is given for chromosome #{chr} in wig file"
+      end
       @step = step.to_i
-      # TODO: What happens if step size isn't given
-      
-      
+  
+      #
+      # sometimes the last few bp of a chromosome are less than the current span.
+      # Thus there will be a new header defining a new span for the next entry.
+      # Since this is usually just next to the end of a chromosome, we'll discard it. 
+      #      
       if chr == @curr_chr
         @skip_until_header = true
-        # sometimes the last few bp of a chromosome are less than the current span. Thus there will be a new header defining a new span for the next entry. Since this is usually just next to the end of a chromosome, we'll discard it.
         @discarded_lines << line
         return line
       else
-        
-        # Save the last position to the chr Hash as :termination
-        unless @curr_bp.nil?
+
+        # New chromosome
+        unless @curr_bp.nil?  # In which case we are at the start of the wig file
+          # Save the last position to the chr Hash as :termination
           @data[@curr_chr][:termination] = @curr_bp+24
         end
-        
+        # set instance variables for the new chromosome Hash
         @curr_chr = chr
         @data[@curr_chr] = {:step => @step, :positions => {}}
         @curr_bp = nil
