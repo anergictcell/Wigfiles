@@ -64,7 +64,8 @@ class WigReader
     # data = {
     #         "chr1" => {
     #                  :step => 25, 
-    #                  :begin => 10001, 
+    #                  :begin => 10001,
+    #                  :termination => 10203025, 
     #                  :positions => {
     #                                10001 => 12, 10026 => 28...
     #                                 }
@@ -114,6 +115,8 @@ class WigReader
     if line[0,1] == "v" #e.g. variableStep chrom=chr11 span=25
       _, chr, step = line.split(" ").collect{|a| a.split("=")[1]}
       @step = step.to_i
+      # TODO: What happens if step size isn't given
+      
       
       if chr == @curr_chr
         @skip_until_header = true
@@ -121,8 +124,14 @@ class WigReader
         @discarded_lines << line
         return line
       else
-        @cur_chr = chr
-        @data[@cur_chr] = {:step => @step, :positions => {}}
+        
+        # Save the last position to the chr Hash as :termination
+        unless @curr_bp.nil?
+          @data[@curr_chr][:termination] = @curr_bp+24
+        end
+        
+        @curr_chr = chr
+        @data[@curr_chr] = {:step => @step, :positions => {}}
         @curr_bp = nil
         @skip_until_header = false
       return chr
@@ -141,21 +150,21 @@ class WigReader
     raise ArgumentError, "Wrong data format in line #{$.} \"#{line}\"" unless line =~ /^\d+\s\d*\.?\d+$/
 
     #
-    # actually reading the values and adding them to cur_chr now!
+    # actually reading the values and adding them to curr_chr now!
     #
     pos,value = line.split(" ")
     pos = pos.to_i
     # values for chromosomes don't start at 1, but WAY later. Don't fill the array with 0s
     if @curr_bp.nil? 
       @curr_bp = pos
-      @data[@cur_chr][:begin] = pos
+      @data[@curr_chr][:begin] = pos
     else
       @curr_bp += @step
     end
 
     # Wig files don't have to list 0 values, so lines might be missing. We will fill them with 0  
     while (pos > @curr_bp)
-      @data[@cur_chr][:positions][@curr_bp] = 0.0
+      @data[@curr_chr][:positions][@curr_bp] = 0.0
       @curr_bp = @curr_bp + @step
     end
 
@@ -163,38 +172,31 @@ class WigReader
     #
     # finally adding the value to the Hash
     #
-    @data[@cur_chr][:positions][pos] = value.to_f
+    @data[@curr_chr][:positions][pos] = value.to_f
     return line
 
   end
 
   def fpkm(args)
-    chr = chr_known(args[:chr])
-    pos_start = args[:start].to_i
-    pos_end = args[:ending].to_i
-
-    #
-    # check for correct entry of start and end variables
-    #
-    unless (pos_start.is_a? Integer) && (pos_end.is_a? Integer) && (pos_end > pos_start)
-      raise ArgumentError, ":start and :ending have to be Integers, and :ending > :start. :start: #{pos_start}, :ending: #{pos_end}"
-    end
+    chr, pos_start, pos_end = check_coordinates(args)
 
     step = @data[chr][:step]    # we will be using this value a lot, so lets get it once from the Hash
 
     #
     # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
     #
-    correct_start = align_coordinates_with_bins(chr,pos_start)
+    correct_start = align_coordinates_with_bins(chr, pos_start)
     # calculate fraction of first window to use
     first_fraction = ((correct_start + step) - pos_start) / step.to_f
+
+
 
     #
     # shifting the reading window upstream until we find the end coordinate that matches our wig file frame
     #
-    correct_end = align_coordinates_with_bins(chr,pos_end)
+    correct_end = align_coordinates_with_bins(chr, pos_end)
     # calculate fraction of last window to use
-    last_fraction = ((pos_end) - correct_end) / step.to_f
+    last_fraction = (pos_end - correct_end) / step.to_f
 
     #
     # if only a fraction of one window will be used
@@ -225,9 +227,10 @@ class WigReader
     # returns an array containing the fpkm values of each windows within the specified coordinates
     # wig.profile(:chr => "chr1", :start => 1, :ending => 100) # => [0, 10, 3]
     #
-    chr = chr_known(args[:chr])
-    pos_start = align_coordinates_with_bins(chr,args[:start].to_i)  # shift the start coordinate upstream until it matches a wig file data point
-    pos_end = align_coordinates_with_bins(chr,args[:ending].to_i-1)  # shift the end coordinate upstream until it matches a wig file data point
+    chr, pos_start, pos_end = check_coordinates(args)
+
+    pos_start = align_coordinates_with_bins(chr, pos_start)  # shift the start coordinate upstream until it matches a wig file data point
+    pos_end = align_coordinates_with_bins(chr, pos_end-1)  # shift the end coordinate upstream until it matches a wig file data point
     # Subtracting 1 from end coordinate to exclude the last given nucleotide
 
     # check for correct entry of start and end variables
@@ -248,6 +251,31 @@ class WigReader
 
 
 private
+  def check_coordinates(args)
+    chr = chr_known(args[:chr])
+    pos_start = args[:start].to_i
+    pos_end = args[:ending].to_i
+
+    unless (pos_start.is_a? Integer) && (pos_end.is_a? Integer)
+      raise ArgumentError, ":start and :ending have to be Integers! :start: #{pos_start}, :ending: #{pos_end}"
+    end
+
+    unless (pos_end > pos_start)
+      raise ArgumentError, ":ending > :start!  :start: #{pos_start}, :ending: #{pos_end}"
+    end
+
+    if pos_start > ( @data[chr][:termination] - 24 )
+      raise ArgumentError, "The given :start coordinate is downstream of the recorded chromosome data #{pos_start}"
+    end
+
+    # given position is downstream of recorded data, so we just shift it to the last nt
+    if (pos_end > @data[chr][:termination])
+      pos_end = ( @data[chr][:termination] + 1)
+    end
+
+    return [ chr, pos_start, pos_end ]
+  end
+
   def align_coordinates_with_bins(chr,pos)
     #
     # shifting the reading window upstream until we find the start coordinate that matches our wig file frame
