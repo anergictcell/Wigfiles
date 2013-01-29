@@ -59,8 +59,7 @@ class TestReading < Test::Unit::TestCase
     # remove last bin of a chromosome
     res = @last_ary_chr19[0..-2].inject{|x,y| x+y}
     assert_equal(res, @wig.fpkm(chr: 19, start: @chr19_a, ending: @chr19_b))
-    
-
+   
   end
 
   def test_profiles
