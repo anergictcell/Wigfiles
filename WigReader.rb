@@ -14,7 +14,7 @@ For wig file format, please go here: http://genome.ucsc.edu/goldenPath/help/wigg
 
 USAGE:
 
-wig = Wigreader.new(path/to/wig/file)
+wig = WigReader.new(path/to/wig/file)
 
 # read all data into the Hash at once
 wig.read
@@ -241,7 +241,10 @@ class WigReader
     # Subtracting 1 from end coordinate to exclude the last given nucleotide
 
     # check for correct entry of start and end variables
-    unless (pos_end > pos_start)
+    # TODO:
+    # Currently small profiles (size < step) raise Error. Fix that 
+    # FIXED, BUT HAS TO BE TESTED
+    if (pos_end < pos_start)
       raise ArgumentError, "The end coordinate is smaller than start coordinate. :start: #{pos_start}, :ending: #{pos_end}"
     end
 
