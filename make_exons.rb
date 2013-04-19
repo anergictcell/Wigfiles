@@ -88,7 +88,7 @@ WIG_FILES.each do |file|
           coord << hash[:start]
           coord << hash[:ending]
           coord_ary << "#{hash[:chr]}:#{hash[:start]}-#{hash[:ending]}"
-        rescue
+        rescue => e
           error_log "#{e} => #{mgi_symbol} #{hash}"
         end
       end
