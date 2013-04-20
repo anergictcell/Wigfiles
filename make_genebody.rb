@@ -161,4 +161,3 @@ WIG_FILES.each do |file|
   wig = nil
   GC.start
 end
-error.close
