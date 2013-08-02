@@ -153,14 +153,18 @@ class WigReader
       return "Discarded : #{line}"
     end
 
-    # check if the data line has correct format
-    raise ArgumentError, "Wrong data format in line #{$.} \"#{line}\"" unless line =~ /^\d+\s\d*\.?\d+$/
-
     #
     # actually reading the values and adding them to curr_chr now!
     #
+
+    # separate position coordinates and signal value
     pos,value = line.split(" ")
+
+    # check if the data line has correct format
+    raise ArgumentError, "Wrong data format in line #{$.} \"#{line}\"" unless ( pos =~ /^\d+$/ && value)
+    
     pos = pos.to_i
+
     # values for chromosomes don't start at 1, but WAY later. Don't fill the array with 0s
     if @curr_bp.nil? 
       @curr_bp = pos
