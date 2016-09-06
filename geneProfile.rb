@@ -1,5 +1,5 @@
 STDOUT.sync = true
-require './WigReader.rb'
+require_relative './WigReader.rb'
 def error_log(message)
   e = File.open(Dir.getwd + "/WigReader_error.log","a")
   e.puts "#{__FILE__} at #{Time.now} : #{message}"
