@@ -41,6 +41,21 @@ wig.read_with_progress("percent")
 
 Testing is done via `test.rb`.
 
+### geneProfile.rb
+Documentation TBA
+
+### make_exons.rb
+Documentation TBA
+
+### make_genebody.rb
+Documentation TBA
+
+### make_tss.rb
+Documentation TBA
+
+### tssProfile.rb
+Documentation TBA
+
 ### normalize_wigs.rb
 script to convert raw values in .wig files to fpkm values. This script only works with a special folder strucure that is explained in the script.
 The calculations are not floating-number-safe and should NOT be used for publication.
