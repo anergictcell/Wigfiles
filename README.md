@@ -42,7 +42,27 @@ wig.read_with_progress("percent")
 Testing is done via `test.rb`.
 
 ### geneProfile.rb
-Documentation TBA
+Calculates the FPKM profiles of genomic areas. 
+Takes each given area, divides it into equal bins, then calculates the fpkm value for each bin.
+
+General usage:
+```Bash
+geneProfile.rb [source-wig-file] [areas-bed-file] [output-file]
+
+geneProfile.rb ./H3K4me3.wig ./Protein.coding.genes.bed ./Protein.coding.gened.profiles.tsv
+```
+Some settings can be modified inside of the script:
+`TSS_OUTSIDE` : Number of bp upstream of TSS that will be included for the promoter (Default: 1000)
+`TSS_INSIDE` : Number of bp downstream of TSS (inside genebody) that will be included for the promoter (Default: 1000)
+Default Promoter: TSS +/- 1 kb
+`TTS_OUTSIDE` : Number of bp downstream of TTS that will be included for transcriptional termination site (Default: 1000)
+`TTS_INSIDE` : Number of bp upstream of TTS (inside genebody) that will be included for transcriptional termination site (Default: 1000)
+Default TTS: TTS +/ 1 kb
+
+Based on the standard settings, the first and last 1 kb of the genebody will NOT be included in the genebody, but only in the TSS and TTS.
+
+`TSS_BINS`, `TTS_BINS` : Defines in how many bins the promoter and TTS areas will be split for profile calculation (Default: 20)
+`GENEBODY_BINS` : Defines in how many bins the genebody will be split (Default: 40)
 
 ### make_exons.rb
 Documentation TBA
@@ -54,11 +74,25 @@ Documentation TBA
 Documentation TBA
 
 ### tssProfile.rb
-Documentation TBA
+Calculates the FPKM profiles of promoters (TSS)
+Takes each given gene, divides the promoter area into equal bins, then calculates the fpkm value for each bin.
+
+General usage:
+```Bash
+tssProfile.rb [source-wig-file] [areas-bed-file] [output-file]
+
+tssProfile.rb ./H3K4me3.wig ./Protein.coding.genes.bed ./Protein.coding.gened.profiles.tsv
+```
+Some settings can be modified inside of the script:
+`TSS_OUTSIDE` : Number of bp upstream of TSS that will be included for the promoter (Default: 3000)
+`TSS_INSIDE` : Number of bp downstream of TSS (inside genebody) that will be included for the promoter (Default: 3000)
+Default Promoter: TSS +/- 3 kb
+`TSS_BINS` : Defines in how many bins the promoter and TTS areas will be split for profile calculation (Default: 80)
+
 
 ### normalize_wigs.rb
 script to convert raw values in .wig files to fpkm values. This script only works with a special folder strucure that is explained in the script.
-The calculations are not floating-number-safe and should NOT be used for publication.
+The calculations are not floating-number-safe. If your data is sensitive to those errors, do NOT use this tool.
 
 
 ### subtract_wigs.rb
